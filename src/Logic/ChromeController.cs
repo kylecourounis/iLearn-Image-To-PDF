@@ -72,17 +72,19 @@
         private static void DownloadFolders(IWebDriver driver)
         {
             var folderElement = By.CssSelector(".directoryIndex a");
-            var folders = driver.FindElements(folderElement);
-
-            var folderLinks = folders.Skip(3).Take(14).Select(folder => folder.GetAttribute("href")).ToList();
-
-            foreach (var folder in folderLinks)
+            var folders = driver.FindElements(folderElement).Skip(1).ToList();
+            
+            var folderURLs = folders.Select(folder => folder.GetAttribute("href")).ToList();
+            var folderNames = folders.Select(folder => folder.Text).ToList();
+            
+            for (int i = 0; i < folderURLs.Count; i++)
             {
-                Console.WriteLine(folder.Split("/")[7].Replace("%20", " ").Replace("%3A", "-") + Environment.NewLine);
+                var name = folderNames[i];
+                Console.WriteLine(name + Environment.NewLine);
 
-                driver.Navigate().GoToUrl(folder);
+                driver.Navigate().GoToUrl(folderURLs[i]);
 
-                ChromeController.DownloadFiles(driver);
+                ChromeController.DownloadFiles(name, driver);
 
                 driver.Navigate().Back();
             }
@@ -94,7 +96,7 @@
         /// <summary>
         /// Downloads the files.
         /// </summary>
-        private static void DownloadFiles(IWebDriver driver)
+        private static void DownloadFiles(string name, IWebDriver driver)
         {
             var fileElement = By.ClassName("org_sakaiproject_content_types_fileUpload");
             var files = driver.FindElements(fileElement);
@@ -107,8 +109,10 @@
             {
                 driver.Navigate().GoToUrl(imageLink);
 
-                // Credit to https://stackoverflow.com/a/45279910
-                var base64 = ((IJavaScriptExecutor)driver).ExecuteScript(@"
+                if (imageLink.EndsWith(".jpg"))
+                {
+                    // Credit to https://stackoverflow.com/a/45279910
+                    var base64 = ((IJavaScriptExecutor)driver).ExecuteScript(@"
                                     var c = document.createElement('canvas');
                                     var ctx = c.getContext('2d');
 
@@ -120,11 +124,14 @@
                                     var base64String = c.toDataURL();
 
                                     return base64String;
-                                    ") as string; 
+                                    ") as string;
 
-                images.Add(base64);
-
-                Thread.Sleep(750);
+                    images.Add(base64);
+                }
+                else if (imageLink.EndsWith(".pdf"))
+                {
+                    // TODO
+                }
 
                 driver.Navigate().Back();
 
@@ -132,9 +139,10 @@
                 Console.WriteLine($"Progress: {Math.Round((double)(100 * images.Count) / fileLinks.Count)}%, {images.Count}/{fileLinks.Count}");
             }
 
-            var name = driver.Url.Split("/")[7].Replace("%20", " ").Replace("%3A", "-");
-
-            ImageProcessor.CreatePDF(images).Save($"Unit PDFs/{name}.pdf");
+            if (images.Count > 0)
+            {
+                ImageProcessor.CreatePDF(images).Save($"Unit PDFs/{name.Replace(":", " -")}.pdf");
+            }
 
             Console.WriteLine($"Saved to 'Unit PDFs/{name}.pdf'" + Environment.NewLine);
         }

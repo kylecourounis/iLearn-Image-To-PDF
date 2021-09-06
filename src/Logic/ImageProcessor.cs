@@ -36,5 +36,22 @@
 
             return document;
         }
+
+        /// <summary>
+        /// Creates the <see cref="PdfDocument"/> from a <see cref="List{PdfDocument}"/> of PdfDocuments.
+        /// </summary>
+        internal static PdfDocument CreatePDF(List<PdfDocument> pdfDocuments)
+        {
+            var document = new PdfDocument();
+
+            Console.WriteLine("Compiling...");
+
+            foreach (var pdf in pdfDocuments)
+            {
+                document.AddPage(pdf.Pages[0]);
+            }
+
+            return document;
+        }
     }
 }
